@@ -144,6 +144,7 @@ ENV/
 env.bak/
 venv.bak/
 Winvenv/
+.vscode/
 
 # Spyder project settings
 .spyderproject
