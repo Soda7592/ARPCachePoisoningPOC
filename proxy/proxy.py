@@ -37,7 +37,30 @@ class Interceptor:
         if server is None :
             return
         try:
+            unwanted_keywords = [
+                "gstatic.com",
+                "doubleclick.net",
+                "consumer.cloud.gist.build",
+                "googleapis.com",
+                "api2.cursor.sh",
+                "play.google.com",
+                "main.vscode-cdn.net",
+                "google.com",
+                "gvt1.com",
+                "gvt2.com",
+                "ggpht.com"
+            ]
+            unwanted_extensions = [
+                ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico",
+                ".svg", ".webp", ".woff", ".woff2", ".ttf", ".eot"
+            ]
+            url = flow.request.pretty_url
+            if any(url.endswith(ext) for ext in unwanted_extensions):
+                return
+            if any(keyword in url for keyword in unwanted_keywords):
+                return
             data = {
+                'client_ip': flow.client_conn.peername[0],
                 'url': flow.request.url,
                 'method': flow.request.method,
                 'headers': dict(flow.request.headers),
