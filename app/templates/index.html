@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>The Wall of Sheep</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #E0E0E0;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #FF5733;
+            text-align: center;
+        }
+        #traffic-container {
+            margin-top: 20px;
+        }
+        .flow-item {
+            background-color: #1E1E1E;
+            border-left: 5px solid #FF5733;
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .url {
+            color: #66CCFF;
+            font-size: 1.2em;
+            word-break: break-all;
+        }
+        .method {
+            color: #4CAF50;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .protocol {
+            color: #FFC300;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <h1>The Wall of Sheep</h1>
+    <div id="traffic-container">
+        </div>
+
+    <script>
+        // Connect to the WebSocket server started by mitmproxy
+        // Make sure this matches the port in your mitmproxy script (e.g., 8088)
+        const ws = new WebSocket('ws://localhost:8088');
+
+        // This function is called when a new message is received
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            console.log('Received data:', data);
+
+            // Create a new div for the captured flow
+            const flowItem = document.createElement('div');
+            flowItem.className = 'flow-item';
+
+            // Use the data to populate the div
+            flowItem.innerHTML = `
+                <div class="method">${data.method}</div>
+                <div class="protocol">${data.protocol}</div>
+                <div class="url">${data.url}</div>
+                <div class="status">Status: ${data.status}</div>
+            `;
+            
+            const container = document.getElementById('traffic-container');
+
+            // Add the new flow item to the top of the container
+            container.prepend(flowItem);
+
+            // Keep the number of displayed items manageable (e.g., last 50)
+            if (container.children.length > 50) {
+                container.removeChild(container.lastChild);
+            }
+        };
+
+        ws.onopen = function() {
+            console.log("WebSocket connected successfully!");
+        };
+
+        ws.onerror = function(error) {
+            console.error("WebSocket Error:", error);
+        };
+
+    </script>
+</body>
+</html>
