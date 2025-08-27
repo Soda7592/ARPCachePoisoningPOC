@@ -60,13 +60,31 @@ class Interceptor:
                 return
             if any(keyword in url for keyword in unwanted_keywords):
                 return
+
+            # 優先以 text 取出；若失敗或為二進位，回退為簡短摘要
+            try:
+                req_body = flow.request.get_text(strict=False)
+            except Exception:
+                req_body = None
+
+            if not req_body:
+                raw = flow.request.raw_content
+                if raw is not None:
+                    snippet = raw[:512]
+                    try:
+                        req_body = snippet.decode("utf-8", errors="replace")
+                    except Exception:
+                        req_body = f"<binary {len(raw)} bytes>"
+                else:
+                    req_body = ""
+
             data = {
                 'client_ip': flow.client_conn.peername[0],
                 'url': flow.request.url,
                 'method': flow.request.method,
                 'headers': dict(flow.request.headers),
                 'status': flow.response.status_code,
-                'body': flow.request.text,
+                'body': req_body,
                 'protocol': flow.request.scheme
             }
             server.send_message_to_all(json.dumps(data))

@@ -142,6 +142,119 @@ function applyFilter(row) {
     }
 }
 
+// ---------- Formatting helpers ----------
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function nl2br(htmlEscapedText) {
+    return htmlEscapedText.replace(/\n/g, '<br>');
+}
+
+function getHeaderValue(headers, name) {
+    if (!headers) return undefined;
+    const lowerName = name.toLowerCase();
+    for (const key of Object.keys(headers)) {
+        if (key.toLowerCase() === lowerName) return headers[key];
+    }
+    return undefined;
+}
+
+function formatHeaders(headersObj) {
+    try {
+        if (!headersObj || typeof headersObj !== 'object') return '';
+        const lines = [];
+        for (const [key, value] of Object.entries(headersObj)) {
+            const safeKey = escapeHtml(key);
+            const safeVal = escapeHtml(Array.isArray(value) ? value.join(', ') : String(value));
+            lines.push(`<strong>${safeKey}</strong>: ${safeVal}`);
+        }
+        return lines.join('<br>');
+    } catch (e) {
+        return nl2br(escapeHtml(JSON.stringify(headersObj)));
+    }
+}
+
+function truncateText(text, max = 20000) {
+    if (typeof text !== 'string') return '';
+    if (text.length <= max) return text;
+    const hidden = text.length - max;
+    return text.slice(0, max) + `\n... [truncated ${hidden} chars]`;
+}
+
+function isLikelyQueryString(body) {
+    return typeof body === 'string' && /[=&]/.test(body) && !/[{}\[\]]/.test(body);
+}
+
+function formatJsonTopLevelToLines(obj) {
+    try {
+        if (Array.isArray(obj)) {
+            // 列出陣列每一項
+            const lines = obj.map((item, idx) => {
+                const safeVal = escapeHtml(typeof item === 'string' ? item : JSON.stringify(item));
+                return `<strong>[${idx}]</strong>: ${safeVal}`;
+            });
+            return lines.join('<br>');
+        }
+        if (obj && typeof obj === 'object') {
+            // 只展開最外層，不顯示包覆的大括號
+            const lines = Object.entries(obj).map(([k, v]) => {
+                const safeKey = escapeHtml(k);
+                const valStr = typeof v === 'string' ? v : JSON.stringify(v, null, 2);
+                const safeVal = nl2br(escapeHtml(valStr));
+                return `<strong>${safeKey}</strong>: ${safeVal}`;
+            });
+            return lines.join('<br>');
+        }
+        // 不是物件就原樣
+        return nl2br(escapeHtml(String(obj)));
+    } catch (_) {
+        return nl2br(escapeHtml(JSON.stringify(obj, null, 2)));
+    }
+}
+
+function formatBody(body, headersObj) {
+    if (!body) return '';
+
+    const ctype = (getHeaderValue(headersObj, 'content-type') || '').toLowerCase();
+
+    // JSON（移除最外層大括號，key 粗體）
+    if (ctype.includes('application/json') || (typeof body === 'string' && (body.trim().startsWith('{') || body.trim().startsWith('[')))) {
+        try {
+            const parsed = typeof body === 'string' ? JSON.parse(body) : body;
+            return formatJsonTopLevelToLines(parsed);
+        } catch (_) {
+            // 解析失敗則以文字顯示
+        }
+    }
+
+    // x-www-form-urlencoded（key 粗體逐行）
+    if (ctype.includes('application/x-www-form-urlencoded') || isLikelyQueryString(body)) {
+        try {
+            const params = new URLSearchParams(body);
+            const lines = [];
+            for (const [k, v] of params.entries()) {
+                lines.push(`<strong>${escapeHtml(k)}</strong>: ${escapeHtml(v)}`);
+            }
+            return lines.join('<br>');
+        } catch (_) {}
+    }
+
+    // multipart：僅顯示截斷文字
+    if (ctype.includes('multipart/form-data')) {
+        return nl2br(escapeHtml(truncateText(String(body), 4000)));
+    }
+
+    // 其他：原文（轉義 + 換行處理，避免大括號造成閱讀負擔）
+    return nl2br(escapeHtml(truncateText(String(body))));
+}
+
 function showDetailModal(data) {
     // Fill in details
     document.getElementById('modal-client-ip').textContent = data.client_ip;
@@ -150,12 +263,16 @@ function showDetailModal(data) {
     document.getElementById('modal-status').textContent = data.status;
     
     document.getElementById('modal-url').textContent = data.url;
-    document.getElementById('modal-headers').textContent = JSON.stringify(data.headers, null, 2);
+
+    // headers 每行一個 header: value（HTML）
+    document.getElementById('modal-headers').innerHTML = formatHeaders(data.headers);
     
-    if (data.protocol === 'http' && data.body) {
-        document.getElementById('modal-body').textContent = data.body;
+    // body 依 content-type 漂亮化，並在必要時截斷（HTML）
+    const formattedBody = formatBody(data.body, data.headers);
+    if (formattedBody) {
+        document.getElementById('modal-body').innerHTML = formattedBody;
     } else {
-        document.getElementById('modal-body').textContent = "Body content is not available for HTTPS flows or is empty.";
+        document.getElementById('modal-body').innerHTML = nl2br(escapeHtml("Body content is not available or could not be decoded."));
     }
     
     // Show modal
