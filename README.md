@@ -12,9 +12,10 @@ or
 then
 `pip install -r requirements.txt`
 
-## Put into mitm cert to your system
+## Put mitm cert into your system
 `mitmdump -s ./proxy/proxy.py`
 After allowing traffic to pass through the proxy, connect to http://mitm.it. You can download a cert for your system.
 
 ## Run Web app
+
 `python ./app/app.py`
