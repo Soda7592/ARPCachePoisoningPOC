@@ -45,6 +45,7 @@ class Interceptor:
                 "api2.cursor.sh",
                 "play.google.com",
                 "main.vscode-cdn.net",
+                "googlevideo.com",
                 "google.com",
                 "gvt1.com",
                 "gvt2.com",
