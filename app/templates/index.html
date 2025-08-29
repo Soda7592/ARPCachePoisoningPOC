@@ -20,8 +20,8 @@
         </div>
         <div class="header-actions">
             <div class="status-indicator">
-                <div class="status-dot"></div>
-                <span>Live</span>
+                <div class="status-dot success" id="status-dot"></div>
+                <span id="status-text">Live</span>
             </div>
         </div>
     </div>
@@ -84,6 +84,9 @@
                 🔒
                 <span class="filter-count" id="https-count">0</span>
             </button>
+            <button class="filter-icon-btn" id="clear-traffic-btn" title="Clear Current Traffic">
+                🧹
+            </button>
         </div>
 
         <!-- Main Content Area -->
@@ -97,7 +100,22 @@
                         <thead>
                             <tr>
                                 <th>Source IP</th>
-                                <th>Method</th>
+                                <th>
+                                    <div id="method-filter-control" class="method-filter">
+                                        <span class="method-filter-label">METHOD</span>
+                                        <span id="method-filter-chip" class="method-filter-chip" style="display:none;">ALL</span>
+                                        <span class="method-filter-toggle" title="Filter by Method">▾</span>
+                                    </div>
+                                    <div id="method-filter-menu" class="method-filter-menu">
+                                        <button class="method-filter-item" data-method="ALL">ALL</button>
+                                        <button class="method-filter-item" data-method="GET">GET</button>
+                                        <button class="method-filter-item" data-method="POST">POST</button>
+                                        <button class="method-filter-item" data-method="PUT">PUT</button>
+                                        <button class="method-filter-item" data-method="DELETE">DELETE</button>
+                                        <div class="method-filter-sep"></div>
+                                        <button class="method-filter-item" data-method="OTHERS">OTHERS</button>
+                                    </div>
+                                </th>
                                 <th>Protocol</th>
                                 <th>URL</th>
                                 <th>Status</th>

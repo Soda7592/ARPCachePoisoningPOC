@@ -106,6 +106,11 @@ body {
     animation: pulse 2s infinite;
 }
 
+/* Status color variants */
+.status-dot.success { background: var(--success); }
+.status-dot.warning { background: var(--warning); }
+.status-dot.error { background: var(--error); }
+
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
@@ -334,7 +339,67 @@ body {
     letter-spacing: 0.5px;
     border-bottom: 1px solid var(--border-color);
     backdrop-filter: blur(10px);
+    position: relative;
 }
+
+/* Method filter dropdown */
+.method-filter { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.method-filter-label { user-select: none; letter-spacing: 1px; color: var(--text-secondary); }
+.method-filter-toggle { color: var(--text-muted); font-weight: 700; user-select: none; transition: transform 0.2s ease; }
+.method-filter:hover .method-filter-toggle { transform: translateY(1px); }
+.method-filter-chip {
+    background: rgba(255, 59, 48, 0.12);
+    color: var(--text-primary);
+    border: 1px solid var(--accent-red);
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.12rem 0.5rem; /* reduce top padding to center text */
+    line-height: 1; /* avoid baseline offset */
+    vertical-align: middle;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.method-filter-menu {
+    display: none;
+    position: absolute;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: 0 12px 24px rgba(0,0,0,0.4);
+    padding: 0.5rem;
+    margin-top: 6px;
+    z-index: 20;
+    min-width: 120px;
+    top: 100%;
+    left: 0;
+}
+
+.method-filter-menu.show {
+    display: block;
+}
+
+.method-filter-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    color: var(--text-primary);
+    border: none;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.method-filter-item:hover {
+    background: rgba(255, 59, 48, 0.15);
+}
+
+.method-filter-sep { height: 1px; background: var(--border-color); margin: 0.25rem 0; opacity: 0.7; }
 
 .traffic-table td {
     padding: 1rem 1.5rem;
@@ -357,12 +422,17 @@ body {
 }
 
 .method-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     padding: 0.25rem 0.75rem;
     border-radius: 20px;
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    line-height: 1; /* ensure vertical centering */
+    vertical-align: middle;
 }
 
 .method-badge.GET { background: rgba(52, 199, 89, 0.2); color: var(--success); }

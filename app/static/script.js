@@ -1,6 +1,12 @@
 // script.js
 
 const flows = [];
+const STORAGE_KEYS = {
+    flows: 'twos_flows',
+    stats: 'twos_stats',
+    filter: 'twos_filter',
+    method: 'twos_method'
+};
 const trafficList = document.getElementById('traffic-list');
 const detailModal = document.getElementById('detailModal');
 
@@ -25,10 +31,129 @@ let stats = {
 
 // Filter state
 let currentFilter = 'all';
+let currentMethod = 'ALL';
 
-const ws = new WebSocket('ws://localhost:8088');
+// ---------- Status indicator ----------
+const statusDot = document.getElementById('status-dot');
+const statusText = document.getElementById('status-text');
 
-ws.onmessage = function(event) {
+function setStatus(mode) {
+    // mode: 'live' | 'no-proxy' | 'local-only'
+    if (!statusDot || !statusText) return;
+    statusDot.classList.remove('success', 'warning', 'error');
+    if (mode === 'live') {
+        statusDot.classList.add('success');
+        statusText.textContent = 'Live';
+    } else if (mode === 'no-proxy') {
+        statusDot.classList.add('warning');
+        statusText.textContent = 'No Proxy';
+    } else if (mode === 'local-only') {
+        statusDot.classList.add('error');
+        statusText.textContent = 'Local Only';
+    }
+}
+
+// ---------- WebSocket with auto-reconnect ----------
+let ws;
+let reconnectAttempts = 0;
+let reconnectTimer = null;
+
+function scheduleReconnect() {
+    if (reconnectTimer) return;
+    const base = 2000; // 2s
+    const delay = Math.min(30000, base * Math.pow(2, reconnectAttempts));
+    reconnectAttempts++;
+    reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        connectWebSocket();
+    }, delay);
+}
+
+function createAndInsertRow(data, flowIndex) {
+    const tableRow = document.createElement('tr');
+    tableRow.className = 'traffic-row';
+    tableRow.dataset.index = flowIndex;
+    tableRow.dataset.protocol = data.protocol;
+
+    const timestamp = new Date().toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+    });
+
+    tableRow.innerHTML = `
+        <td>${data.client_ip}</td>
+        <td><span class="method-badge ${data.method}">${data.method}</span></td>
+        <td>${data.protocol.toUpperCase()}</td>
+        <td class="url-cell" title="${data.url}">${data.url}</td>
+        <td><span class="status-badge" data-status="${data.status}">${data.status}</span></td>
+        <td>${timestamp}</td>
+    `;
+
+    if (trafficList.firstChild) {
+        trafficList.insertBefore(tableRow, trafficList.firstChild);
+    } else {
+        trafficList.appendChild(tableRow);
+    }
+
+    applyFilter(tableRow);
+
+    tableRow.addEventListener('click', function() {
+        const activeRow = document.querySelector('.traffic-row.active');
+        if (activeRow) {
+            activeRow.classList.remove('active');
+        }
+        this.classList.add('active');
+        
+        showDetailModal(data);
+    });
+
+    const maxRows = 50;
+    if (trafficList.children.length > maxRows) {
+        trafficList.lastElementChild.remove();
+    }
+}
+
+function saveState() {
+    try {
+        const maxStore = 200; // store last 200 flows
+        const flowsToSave = flows.slice(-maxStore);
+        localStorage.setItem(STORAGE_KEYS.flows, JSON.stringify(flowsToSave));
+        localStorage.setItem(STORAGE_KEYS.stats, JSON.stringify(stats));
+        localStorage.setItem(STORAGE_KEYS.filter, currentFilter);
+        localStorage.setItem(STORAGE_KEYS.method, currentMethod);
+    } catch (_) {}
+}
+
+function restoreState() {
+    try {
+        const savedFlows = JSON.parse(localStorage.getItem(STORAGE_KEYS.flows) || '[]');
+        const savedStats = JSON.parse(localStorage.getItem(STORAGE_KEYS.stats) || 'null');
+        const savedFilter = localStorage.getItem(STORAGE_KEYS.filter);
+        const savedMethod = localStorage.getItem(STORAGE_KEYS.method);
+
+        if (Array.isArray(savedFlows) && savedFlows.length) {
+            // push into in-memory and rebuild table
+            for (const f of savedFlows) {
+                const idx = flows.push(f) - 1;
+                createAndInsertRow(f, idx);
+            }
+        }
+        if (savedStats && typeof savedStats === 'object') {
+            stats = savedStats;
+        }
+        updateSummaryCards();
+        if (savedFilter) {
+            setFilter(savedFilter);
+        }
+        if (savedMethod) {
+            setMethodFilter(savedMethod);
+        }
+    } catch (_) {}
+}
+
+function handleWSMessage(event) {
     try {
         const data = JSON.parse(event.data);
         const flowIndex = flows.push(data) - 1;
@@ -45,59 +170,46 @@ ws.onmessage = function(event) {
         // Update summary cards
         updateSummaryCards();
 
-        // Create table row
-        const tableRow = document.createElement('tr');
-        tableRow.className = 'traffic-row';
-        tableRow.dataset.index = flowIndex;
-        tableRow.dataset.protocol = data.protocol;
+        createAndInsertRow(data, flowIndex);
 
-        // Format timestamp
-        const timestamp = new Date().toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true
-        });
-
-        tableRow.innerHTML = `
-            <td>${data.client_ip}</td>
-            <td><span class="method-badge ${data.method}">${data.method}</span></td>
-            <td>${data.protocol.toUpperCase()}</td>
-            <td class="url-cell" title="${data.url}">${data.url}</td>
-            <td><span class="status-badge" data-status="${data.status}">${data.status}</span></td>
-            <td>${timestamp}</td>
-        `;
-
-        // Insert at the top of the table
-        if (trafficList.firstChild) {
-            trafficList.insertBefore(tableRow, trafficList.firstChild);
-        } else {
-            trafficList.appendChild(tableRow);
-        }
-
-        // Apply current filter
-        applyFilter(tableRow);
-
-        // Add click event
-        tableRow.addEventListener('click', function() {
-            const activeRow = document.querySelector('.traffic-row.active');
-            if (activeRow) {
-                activeRow.classList.remove('active');
-            }
-            this.classList.add('active');
-            
-            showDetailModal(data);
-        });
-        
-        // Limit table rows
-        const maxRows = 50;
-        if (trafficList.children.length > maxRows) {
-            trafficList.lastElementChild.remove();
-        }
+        // persist state after new message
+        saveState();
     } catch (e) {
         console.error("Error parsing message:", e);
     }
-};
+}
+
+function connectWebSocket() {
+    try {
+        ws = new WebSocket('ws://localhost:8088');
+
+        ws.onopen = function() {
+            setStatus('live');
+            reconnectAttempts = 0;
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+        };
+
+        ws.onmessage = handleWSMessage;
+
+        const onDisconnect = function() {
+            setStatus('no-proxy');
+            scheduleReconnect();
+        };
+
+        ws.onclose = onDisconnect;
+        ws.onerror = onDisconnect;
+    } catch (_) {
+        setStatus('no-proxy');
+        scheduleReconnect();
+    }
+}
+
+// 初始先假設本地可連（未接上 Proxy）
+setStatus('local-only');
+connectWebSocket();
 
 function updateSummaryCards() {
     totalRequestsEl.textContent = stats.total.toLocaleString();
@@ -132,14 +244,23 @@ function setFilter(filterType) {
 
 function applyFilter(row) {
     const protocol = row.dataset.protocol;
-    
-    if (currentFilter === 'all') {
-        row.style.display = '';
-    } else if (currentFilter === 'http') {
-        row.style.display = protocol === 'http' ? '' : 'none';
-    } else if (currentFilter === 'https') {
-        row.style.display = protocol === 'https' ? '' : 'none';
+    const methodEl = row.querySelector('.method-badge');
+    const methodVal = methodEl ? methodEl.textContent : '';
+
+    let protoPass = true;
+    if (currentFilter === 'http') protoPass = protocol === 'http';
+    else if (currentFilter === 'https') protoPass = protocol === 'https';
+
+    let methodPass = true;
+    if (currentMethod !== 'ALL') {
+        if (currentMethod === 'Others') {
+            methodPass = !['GET','POST','PUT','DELETE'].includes(methodVal);
+        } else {
+            methodPass = methodVal === currentMethod;
+        }
     }
+
+    row.style.display = (protoPass && methodPass) ? '' : 'none';
 }
 
 // ---------- Formatting helpers ----------
@@ -314,14 +435,98 @@ updateSummaryCards();
 
 // Initialize filter state and bind events
 document.addEventListener('DOMContentLoaded', function() {
+    // restore previous state from cache FIRST
+    restoreState();
     // Bind filter button events
     document.querySelectorAll('.filter-icon-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const filterType = this.dataset.filter;
             setFilter(filterType);
+            // save filter on change
+            try { localStorage.setItem(STORAGE_KEYS.filter, currentFilter); } catch (_) {}
         });
     });
     
-    // Set initial filter
-    setFilter('all');
+    // Ensure there is an active filter; if none restored, default to 'all'
+    const hasActive = !!document.querySelector('.filter-icon-btn.active');
+    if (!hasActive) {
+        setFilter('all');
+    }
+
+    // Method filter UI（點擊整個 Method 區域）
+    const control = document.getElementById('method-filter-control');
+    const menu = document.getElementById('method-filter-menu');
+    if (control && menu) {
+        control.addEventListener('click', function(e) {
+            e.stopPropagation();
+            menu.classList.toggle('show');
+        });
+
+        menu.querySelectorAll('.method-filter-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const val = this.dataset.method || 'ALL';
+                setMethodFilter(val);
+                try { localStorage.setItem(STORAGE_KEYS.method, currentMethod); } catch (_) {}
+                menu.classList.remove('show');
+            });
+        });
+
+        document.addEventListener('click', function() {
+            menu.classList.remove('show');
+        });
+    }
+    // Bind clear traffic button
+    const clearBtn = document.getElementById('clear-traffic-btn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const confirmed = confirm('Confirm to clear current traffic?');
+            if (!confirmed) return;
+
+            // Close modal if open
+            if (detailModal.classList.contains('show')) {
+                closeDetailModal();
+            }
+
+            // Clear table rows
+            while (trafficList.firstChild) {
+                trafficList.removeChild(trafficList.firstChild);
+            }
+
+            // Reset data and stats
+            flows.length = 0;
+            stats = { total: 0, http: 0, https: 0, active: 0 };
+            updateSummaryCards();
+
+            // Keep current filter state active styling
+            setFilter(currentFilter);
+
+            // Clear persisted cache (method resets to ALL)
+            try {
+                localStorage.removeItem(STORAGE_KEYS.flows);
+                localStorage.removeItem(STORAGE_KEYS.stats);
+                localStorage.setItem(STORAGE_KEYS.method, 'ALL');
+            } catch (_) {}
+        });
+    }
+    // Save before unload to persist latest counters
+    window.addEventListener('beforeunload', function() {
+        try { saveState(); } catch (_) {}
+    });
 });
+
+function setMethodFilter(method) {
+    currentMethod = method || 'ALL';
+    document.querySelectorAll('.traffic-row').forEach(row => applyFilter(row));
+    // 更新 chip 顯示（ALL 隱藏 chip）
+    const chip = document.getElementById('method-filter-chip');
+    if (chip) {
+        if (currentMethod && currentMethod !== 'ALL') {
+            chip.textContent = currentMethod === 'OTHERS' ? 'Others' : currentMethod;
+            chip.style.display = '';
+        } else {
+            chip.style.display = 'none';
+        }
+    }
+}
