@@ -19,3 +19,17 @@ After allowing traffic to pass through the proxy, connect to http://mitm.it. You
 ## Run Web app
 
 `python ./app/app.py`
+
+## 0829
+
+- Kali
+  - sudo sysctl -w net.ipv4.ip_forward=1
+  - sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080
+  - sudo iptables -t nat -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 8080
+  - mitmproxy -s ./proxy/proxy.py
+  - python3 ./app/app.py
+host: .60
+iphone: .101
+mitmproxy: .62
+: 因為是透過 websocket 拿 mitmproxy 的東西然後放到前端，如果在 .62 以外的地方打開網頁會看不到 proxy 的流量，所以這邊可能要修改。
+: 因為 https 沒有憑證不能解密，所以 mitmproxy 收到 https 時不能用，但是現在 proxy 因為通通攔截下來，所以受害者流量通過 https 時會直接攔截不到，導致網頁直接連不上，看看能不能改成只攔截 http。
