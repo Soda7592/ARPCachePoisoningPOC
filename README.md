@@ -33,3 +33,7 @@ iphone: .101
 mitmproxy: .62
 : 因為是透過 websocket 拿 mitmproxy 的東西然後放到前端，如果在 .62 以外的地方打開網頁會看不到 proxy 的流量，所以這邊可能要修改。
 : 因為 https 沒有憑證不能解密，所以 mitmproxy 收到 https 時不能用，但是現在 proxy 因為通通攔截下來，所以受害者流量通過 https 時會直接攔截不到，導致網頁直接連不上，看看能不能改成只攔截 http。
+
+## 0830
+sudo iptables -t nat -F
+sudo iptables -t nat -L -v -n
