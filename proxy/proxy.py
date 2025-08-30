@@ -1,6 +1,7 @@
 import json
 import threading
-from mitmproxy import http
+from mitmproxy import http, tls, proxy
+from mitmproxy.proxy.layers import http as http_layers
 from http.server import HTTPServer
 from websocket_server import WebsocketServer
 from colorama import Fore, Style, init
@@ -15,7 +16,7 @@ def new_client(client, server):
 def start_server():
     global server
     try:
-        server = WebsocketServer(host="127.0.0.1", port=SocketPort)
+        server = WebsocketServer(host="0.0.0.0", port=SocketPort)
         server.set_fn_new_client(new_client)
         print(f"{Fore.GREEN}[*] WebSocket server started on port {SocketPort}{Style.RESET_ALL}")
         server.run_forever()
@@ -25,31 +26,34 @@ def start_server():
 class Interceptor:
     def __init__(self):
         self.ProxyPort = 8080
-        self.ProxyHost = "127.0.0.1"
+        self.ProxyHost = "0.0.0.0"
         proxyThread = threading.Thread(target=start_server, daemon=True)
         proxyThread.start()
         print(f"{Fore.GREEN}[*] Proxy server started on port {self.ProxyPort}{Style.RESET_ALL}")
 
+    def tls_clienthello(self, flow: tls.ClientHelloData):
+        sni = flow.client_hello.sni
+        if sni:
+            print(f"[{flow.context.client.peername}] Detected SNI: {sni}, setting ignore_connection")
+            flow.ignore_connection = True
+            # ��𡑒岫撠� SNI 靽⊥�臬�喲�䂿策銝𧢲虜��𦻖嚗��𡒊�𡁜僕��琜��
+            flow.context.server.address = (sni, 443)  # 閮剔蔭�𤌍璅坔𧑐��
+        else:
+            print(f"[{flow.context.client.peername}] No SNI available, cannot set hostname")
+
     def request(self, flow: http.HTTPFlow):
-        pass
+        print(f"Request from {flow.client_conn.peername}: {flow.request.url}, scheme: {flow.request.scheme}, method: {flow.request.method}")
 
     def response(self, flow: http.HTTPFlow):
-        if server is None :
+        if server is None:
             return
+        print(f"Response for {flow.request.url}, scheme: {flow.request.scheme}")
         try:
             unwanted_keywords = [
-                "gstatic.com",
-                "doubleclick.net",
-                "consumer.cloud.gist.build",
-                "googleapis.com",
-                "api2.cursor.sh",
-                "play.google.com",
-                "main.vscode-cdn.net",
-                "googlevideo.com",
-                "google.com",
-                "gvt1.com",
-                "gvt2.com",
-                "ggpht.com"
+                "gstatic.com", "doubleclick.net", "consumer.cloud.gist.build",
+                "googleapis.com", "api2.cursor.sh", "play.google.com",
+                "main.vscode-cdn.net", "googlevideo.com", "google.com",
+                "gvt1.com", "gvt2.com", "ggpht.com"
             ]
             unwanted_extensions = [
                 ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico",
@@ -61,7 +65,6 @@ class Interceptor:
             if any(keyword in url for keyword in unwanted_keywords):
                 return
 
-            # 優先以 text 取出；若失敗或為二進位，回退為簡短摘要
             try:
                 req_body = flow.request.get_text(strict=False)
             except Exception:
@@ -90,6 +93,9 @@ class Interceptor:
             server.send_message_to_all(json.dumps(data))
         except Exception as e:
             print(f"{Fore.RED}[*] Error sending message to clients: {e}{Style.RESET_ALL}")
+
+    def error(self, flow: http.HTTPFlow):
+        print(f"Error for {flow.client_conn.peername}: {flow.error}")
 
 addons = [
     Interceptor()
