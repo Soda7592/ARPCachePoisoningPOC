@@ -36,8 +36,7 @@ class Interceptor:
         if sni:
             print(f"[{flow.context.client.peername}] Detected SNI: {sni}, setting ignore_connection")
             flow.ignore_connection = True
-            # ��𡑒岫撠� SNI 靽⊥�臬�喲�䂿策銝𧢲虜��𦻖嚗��𡒊�𡁜僕��琜��
-            flow.context.server.address = (sni, 443)  # 閮剔蔭�𤌍璅坔𧑐��
+            flow.context.server.address = (sni, 443)
         else:
             print(f"[{flow.context.client.peername}] No SNI available, cannot set hostname")
 
