@@ -44,3 +44,5 @@ mitmproxy: .62
 - sudo arpspoof -i eth0 -t 192.168.1.1 192.168.1.60
 - ./venv/bin/mitmdump -v -s ./proxy/proxy.py
 - python ./app/app.py
+
+- HTTPS 實際環境上應該抓不到，看看 Web 那端要不要改掉，然後可以用 Bettercap 對多個設備進行 arp spoofing
