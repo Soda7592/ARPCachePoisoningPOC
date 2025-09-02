@@ -50,3 +50,4 @@ mitmproxy: .62
 ## 0902
 - 已經大致把想做的功能做完，Project 還需要把 README 調整好，然後嘗試使用 Bettercap 對網內的 IP 進行攻擊
 - 可以嘗試看看有沒有機會做"防禦"相關內容 ?
+- 弄成 Docker ?
