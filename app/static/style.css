@@ -1,3 +1,80 @@
+#ipStatsModal .ip-stats-container {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+@media (max-width: 900px) {
+    #ipStatsModal .ip-stats-container { max-height: 55vh; }
+}
+
+@media (max-width: 520px) {
+    #ipStatsModal .ip-stats-container { max-height: 50vh; }
+}
+
+/* IP Requests modal scroll area */
+#ipReqsModal .ip-reqs-container {
+    max-height: none; /* 取消內部固定高度 */
+    overflow: visible; /* 移除內部滾動軸 */
+}
+
+/* 覆寫全域 sticky 表頭：在 IP Requests 視窗內，表頭不 sticky，避免內容滑到表頭下方 */
+#ipReqsModal .traffic-table thead {
+    position: static !important;
+    top: auto !important;
+    z-index: auto !important;
+}
+
+#ipReqsModal .traffic-table {
+    table-layout: fixed; /* 防止欄寬在捲動時重新計算造成位移 */
+    width: 100%;
+}
+
+#ipReqsModal .traffic-table th,
+#ipReqsModal .traffic-table td {
+    vertical-align: middle;
+}
+
+/* 讓 IP Requests 視窗的表頭在容器滾動時仍在最上層，避免徽章覆蓋 */
+#ipReqsModal .traffic-table thead th { position: static; z-index: auto; }
+
+#ipReqsModal .traffic-table th:nth-child(1),
+#ipReqsModal .traffic-table td:nth-child(1) { width: 12%; white-space: nowrap; }
+#ipReqsModal .traffic-table th:nth-child(3),
+#ipReqsModal .traffic-table td:nth-child(3) { width: 10%; white-space: nowrap; }
+#ipReqsModal .traffic-table th:nth-child(4),
+#ipReqsModal .traffic-table td:nth-child(4) { width: 22%; white-space: nowrap; text-align: right; }
+#ipReqsModal .time-badge { color: var(--text-secondary); font-size: 0.9rem; white-space: nowrap; display: inline-block; }
+
+/* 已讀行：顏色變淡 */
+#ipReqsModal tr.read td { color: var(--text-muted); }
+#ipReqsModal tr.read .url-cell { color: var(--text-muted); }
+#ipReqsModal .traffic-table th:nth-child(2),
+#ipReqsModal .traffic-table td:nth-child(2) { width: 58%; }
+
+#ipReqsModal .traffic-table tbody tr { cursor: pointer; }
+
+/* Method 徽章在 IP Requests 中固定不換行，避免被拆行 */
+#ipReqsModal .method-badge { display: inline-flex; align-items: center; white-space: nowrap; }
+
+#ipReqsModal .action-btn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+}
+#ipReqsModal .action-btn:hover {
+    border-color: var(--accent-red);
+}
+
+@media (max-width: 900px) {
+    #ipReqsModal .ip-reqs-container { max-height: 55vh; }
+}
+
+@media (max-width: 520px) {
+    #ipReqsModal .ip-reqs-container { max-height: 50vh; }
+}
 /* -------------------- Globals & Fonts -------------------- */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
@@ -121,8 +198,8 @@ body {
     max-width: 1400px;
     margin: 0 auto;
     padding: 2rem;
-    height: calc(100vh - 100px);
-    overflow: hidden;
+    min-height: calc(100vh - 100px);
+    overflow: visible; /* 讓整頁由 body 產生捲軸 */
     display: flex;
     flex-direction: column;
 }
@@ -145,6 +222,8 @@ body {
     position: relative;
     overflow: hidden;
 }
+.summary-card.clickable { cursor: pointer; }
+.summary-card.clickable:hover { box-shadow: var(--shadow-hover); border-color: var(--accent-red); }
 
 .summary-card:hover {
     transform: translateY(-4px);
@@ -291,6 +370,9 @@ body {
     border-bottom: 1px solid var(--border-color);
     background: rgba(255, 59, 48, 0.05);
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .content-header h2 {
@@ -311,9 +393,27 @@ body {
 }
 
 .table-container {
-    flex: 1;
-    overflow: auto;
+    flex: 0 0 auto;
+    height: 420px; /* 固定表格視窗高度 */
+    overflow-y: auto; /* 表格獨立滾動 */
+    overflow-x: hidden;
     min-height: 0;
+}
+
+/* -------------------- Responsive: small screens -------------------- */
+@media (max-width: 900px) {
+    .main-container { padding: 1.25rem; }
+    .summary-grid { grid-template-columns: repeat(2, minmax(160px, 1fr)); gap: 1rem; }
+    .summary-card { padding: 1rem; }
+    .card-value { font-size: 1.5rem; }
+    .table-container { height: 360px; }
+}
+
+@media (max-width: 520px) {
+    .main-container { padding: 1rem; }
+    .summary-grid { grid-template-columns: 1fr; gap: 0.75rem; }
+    .summary-card { padding: 0.875rem; }
+    .table-container { height: 300px; }
 }
 
 /* -------------------- Traffic Table -------------------- */
@@ -328,6 +428,10 @@ body {
     z-index: 10;
 }
 
+/* IP 統計表格與主表一致風格 */
+#ip-stats-list tr:nth-child(even) { background: rgba(255, 59, 48, 0.03); }
+#ip-stats-list tr:hover { background: rgba(255, 59, 48, 0.06); }
+
 .traffic-table th {
     background: var(--surface-color);
     padding: 1rem 1.5rem;
@@ -340,6 +444,15 @@ body {
     border-bottom: 1px solid var(--border-color);
     backdrop-filter: blur(10px);
     position: relative;
+}
+
+.active-badge {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
 }
 
 /* Method filter dropdown */
@@ -374,6 +487,8 @@ body {
     margin-top: 6px;
     z-index: 20;
     min-width: 120px;
+    max-height: 200px;
+    overflow-y: auto;
     top: 100%;
     left: 0;
 }
@@ -400,6 +515,25 @@ body {
 }
 
 .method-filter-sep { height: 1px; background: var(--border-color); margin: 0.25rem 0; opacity: 0.7; }
+
+/* 自定義滾動軸樣式 */
+.method-filter-menu::-webkit-scrollbar {
+    width: 6px;
+}
+
+.method-filter-menu::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.method-filter-menu::-webkit-scrollbar-thumb {
+    background: rgba(255, 59, 48, 0.5);
+    border-radius: 3px;
+}
+
+.method-filter-menu::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 59, 48, 0.7);
+}
 
 .traffic-table td {
     padding: 1rem 1.5rem;
@@ -439,6 +573,7 @@ body {
 .method-badge.POST { background: rgba(255, 149, 0, 0.2); color: var(--warning); }
 .method-badge.PUT { background: rgba(255, 149, 0, 0.2); color: var(--warning); }
 .method-badge.DELETE { background: rgba(255, 59, 48, 0.2); color: var(--error); }
+.method-badge.TLS { background: rgba(255, 59, 48, 0.2); color: var(--error); }
 
 .status-badge {
     padding: 0.25rem 0.75rem;
@@ -462,7 +597,7 @@ body {
 .detail-modal {
     display: none;
     position: fixed;
-    z-index: 1000;
+    z-index: 3000; /* 高於其他模態 */
     left: 0;
     top: 0;
     width: 100%;
@@ -470,6 +605,9 @@ body {
     background-color: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(5px);
 }
+
+/* 確保主流量詳細視窗永遠在最上層（覆蓋任何其他模態） */
+#detailModal { z-index: 5000; }
 
 .detail-modal.show {
     display: flex;
@@ -590,6 +728,7 @@ body {
     line-height: 1.6;
     white-space: pre-wrap;
     word-break: break-all;
+    box-shadow: var(--shadow);
 }
 
 /* -------------------- Responsive Design -------------------- */

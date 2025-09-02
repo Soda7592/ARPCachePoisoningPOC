@@ -34,28 +34,10 @@
         <div class="summary-card">
             <div class="card-header">
                 <span class="card-title">Total Requests</span>
-                <div class="card-icon">📊</div>
+                <div class="card-icon">🌐</div>
             </div>
             <div class="card-value" id="total-requests">0</div>
             <div class="card-description">Captured network requests</div>
-        </div>
-        
-        <div class="summary-card">
-            <div class="card-header">
-                <span class="card-title">Active Connections</span>
-                <div class="card-icon">🔗</div>
-            </div>
-            <div class="card-value" id="active-connections">0</div>
-            <div class="card-description">Current active sessions</div>
-        </div>
-        
-        <div class="summary-card">
-            <div class="card-header">
-                <span class="card-title">HTTP Requests</span>
-                <div class="card-icon">🌐</div>
-            </div>
-            <div class="card-value" id="http-requests">0</div>
-            <div class="card-description">HTTP traffic count</div>
         </div>
         
         <div class="summary-card">
@@ -65,6 +47,24 @@
             </div>
             <div class="card-value" id="https-requests">0</div>
             <div class="card-description">HTTPS traffic count</div>
+        </div>
+        
+        <div class="summary-card">
+            <div class="card-header">
+                <span class="card-title">HTTP Requests</span>
+                <div class="card-icon">🔓</div>
+            </div>
+            <div class="card-value" id="http-requests">0</div>
+            <div class="card-description">HTTP traffic count</div>
+        </div>
+        
+        <div class="summary-card clickable" id="source-ip-card" title="View HTTP counts by source IP">
+            <div class="card-header">
+                <span class="card-title">Source IP (HTTP)</span>
+                <div class="card-icon">📥</div>
+            </div>
+            <div class="card-value"><span id="top-http-ip">-</span></div>
+            <div class="card-description">Most HTTP requests • <span id="top-http-count">0</span></div>
         </div>
     </div>
 
@@ -77,7 +77,7 @@
                 <span class="filter-count" id="all-count">0</span>
             </button>
             <button class="filter-icon-btn" data-filter="http" title="HTTP Only">
-                📡
+                🔓
                 <span class="filter-count" id="http-count">0</span>
             </button>
             <button class="filter-icon-btn" data-filter="https" title="HTTPS Only">
@@ -94,12 +94,13 @@
             <div class="content-card">
                 <div class="content-header">
                     <h2>Network Traffic</h2>
+                    <div class="active-badge"><span id="now-time"></span></div>
                 </div>
                 <div class="table-container">
                     <table class="traffic-table">
                         <thead>
                             <tr>
-                                <th>Source IP</th>
+                                <th id="th-source-ip" title="View HTTP counts by source IP" style="cursor:pointer;">Source IP</th>
                                 <th>
                                     <div id="method-filter-control" class="method-filter">
                                         <span class="method-filter-label">METHOD</span>
@@ -107,11 +108,12 @@
                                         <span class="method-filter-toggle" title="Filter by Method">▾</span>
                                     </div>
                                     <div id="method-filter-menu" class="method-filter-menu">
-                                        <button class="method-filter-item" data-method="ALL">ALL</button>
+                                        <button class="method-filter-item" data-method="TLS">TLS</button>
                                         <button class="method-filter-item" data-method="GET">GET</button>
                                         <button class="method-filter-item" data-method="POST">POST</button>
                                         <button class="method-filter-item" data-method="PUT">PUT</button>
                                         <button class="method-filter-item" data-method="DELETE">DELETE</button>
+                                        <button class="method-filter-item" data-method="ALL">ALL</button>
                                         <div class="method-filter-sep"></div>
                                         <button class="method-filter-item" data-method="OTHERS">OTHERS</button>
                                     </div>
@@ -137,7 +139,7 @@
     <div class="detail-modal-content">
         <div class="detail-modal-header">
             <h2>Traffic Details</h2>
-            <button class="close-btn" onclick="closeDetailModal()">&times;</button>
+            <button class="close-btn" onclick="closeDetailModal()" style="z-index:5100;">&times;</button>
         </div>
         <div class="detail-modal-body">
             <div class="detail-section">
@@ -180,6 +182,59 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script src="{{ url_for('static', filename='websocket.js') }}"></script>
+<script src="{{ url_for('static', filename='ui.js') }}"></script>
+
+<!-- IP Stats Modal -->
+<div id="ipStatsModal" class="detail-modal">
+    <div class="detail-modal-content">
+        <div class="detail-modal-header">
+            <h2>HTTP Connections by Source IP</h2>
+            <button class="close-btn" onclick="closeIpStatsModal()">&times;</button>
+        </div>
+        <div class="detail-modal-body">
+            <div class="detail-section">
+                <div class="detail-content-box ip-stats-container">
+                    <table class="traffic-table">
+                        <thead>
+                            <tr>
+                                <th style="width:60%">Source IP</th>
+                                <th style="width:40%">HTTP Count</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ip-stats-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- IP Requests Modal -->
+<div id="ipReqsModal" class="detail-modal">
+    <div class="detail-modal-content">
+        <div class="detail-modal-header">
+            <h2>HTTP Requests - <span id="ip-reqs-title"></span></h2>
+            <button class="close-btn" onclick="closeIpReqsModal()">&times;</button>
+        </div>
+        <div class="detail-modal-body">
+            <div class="detail-section">
+                <div class="detail-content-box ip-reqs-container">
+                    <table class="traffic-table">
+                        <thead>
+                            <tr>
+                                <th style="width:12%">Method</th>
+                                <th style="width:68%">URL</th>
+                                <th style="width:10%">Status</th>
+                                <th style="width:10%">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ip-reqs-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>

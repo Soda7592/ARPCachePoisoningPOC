@@ -46,10 +46,3 @@ mitmproxy: .62
 - python ./app/app.py
 
 - HTTPS 實際環境上應該抓不到，看看 Web 那端要不要改掉，然後可以用 Bettercap 對多個設備進行 arp spoofing
-
-## TODO
-README
-把 Code 整理好
-紀錄 HTTPS 但不攔截
-IP Ranking
-

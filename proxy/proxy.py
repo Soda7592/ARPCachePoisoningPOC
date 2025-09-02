@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 import threading
 from mitmproxy import http, tls, proxy
 from mitmproxy.proxy.layers import http as http_layers
@@ -9,7 +10,12 @@ from colorama import Fore, Style, init
 init(autoreset=True)
 SocketPort = 8088
 server = None
-
+unwanted_keywords = [
+                "gstatic.com", "doubleclick.net", "consumer.cloud.gist.build",
+                "googleapis.com", "api2.cursor.sh", "play.google.com",
+                "main.vscode-cdn.net", "googlevideo.com", "google.com",
+                "gvt1.com", "gvt2.com", "ggpht.com", "i.ytimg.com"
+]
 def new_client(client, server):
     print(f"{Fore.GREEN}[*] New client connected{Style.RESET_ALL}")
 
@@ -32,11 +38,27 @@ class Interceptor:
         print(f"{Fore.GREEN}[*] Proxy server started on port {self.ProxyPort}{Style.RESET_ALL}")
 
     def tls_clienthello(self, flow: tls.ClientHelloData):
-        sni = flow.client_hello.sni
+        sni = (flow.client_hello.sni or "").lower()
         if sni:
             print(f"[{flow.context.client.peername}] Detected SNI: {sni}, setting ignore_connection")
             flow.ignore_connection = True
             flow.context.server.address = (sni, 443)
+            # 忽略清單：子網域也一起比對
+            if any(keyword in sni for keyword in unwanted_keywords):
+                return
+            else:
+                data = {
+                    'client_ip': flow.context.client.peername[0],
+                    'url': f"https://{sni}",
+                    'method': 'TLS',
+                    'headers': "TLS - Encrypted connection established.",
+                    'status': 200,
+                    'body': "TLS - Encrypted connection established.",
+                    'protocol': "https",
+                    'timestamp': datetime.now(timezone.utc).isoformat()
+                }
+                server.send_message_to_all(json.dumps(data))
+                print(flow.client_hello.alpn_protocols)
         else:
             print(f"[{flow.context.client.peername}] No SNI available, cannot set hostname")
 
@@ -48,12 +70,6 @@ class Interceptor:
             return
         print(f"Response for {flow.request.url}, scheme: {flow.request.scheme}")
         try:
-            unwanted_keywords = [
-                "gstatic.com", "doubleclick.net", "consumer.cloud.gist.build",
-                "googleapis.com", "api2.cursor.sh", "play.google.com",
-                "main.vscode-cdn.net", "googlevideo.com", "google.com",
-                "gvt1.com", "gvt2.com", "ggpht.com"
-            ]
             unwanted_extensions = [
                 ".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico",
                 ".svg", ".webp", ".woff", ".woff2", ".ttf", ".eot"
@@ -87,7 +103,8 @@ class Interceptor:
                 'headers': dict(flow.request.headers),
                 'status': flow.response.status_code,
                 'body': req_body,
-                'protocol': flow.request.scheme
+                'protocol': flow.request.scheme,
+                'timestamp': datetime.now(timezone.utc).isoformat()
             }
             server.send_message_to_all(json.dumps(data))
         except Exception as e:
