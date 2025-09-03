@@ -1,4 +1,40 @@
-# TheWallOfSheep_Demo
+# ARPCachePoisoningPOC
+
+## Content
+- Before start
+- How to use
+
+### Before start
+- This project is just a POC for ARP Cache Poisoning attack and man-in-the-middle attack. For educational purposes only.
+- It might not work correctly if your network envirement has any defense mechanical.
+- Thanks for Gemini and Cursor. They have created such a wonderful web page.
+
+### How to use
+- 
+
+## Aggressive behavior and knowledge description
+
+- What is ARP Cache Poisoning
+ARP Cache Poisoning aka ARP Spoofing. This tnechnical is that an adversary is trying to replace the router's mac address in victim's routing table.
+If the adversary did it, the traffic which sent by victim will throught into  adversary's machine, then adversary can look all traffic from victim if there wasn't encrypted.
+
+  - ARP(Address Resolution Protocol) in shortly:
+    When a new computer join a LAN it want to send a message to other device, In addition to the IP address, the physical address, also known as the MAC Address, is also required.
+    ARP handles this requirement. If there a computer(192.168.5.22) want to send a request to other computer(192.168.5.24). .22 device will make a broadcast request to all computer "What's the mac address of 192.168.5.24."
+    When .24 receive this request will send its mac address for response.
+
+    Howerver ARP is stateless protocol, so it is impossible to distinguish the response is correct or not. It cause the adversary has a chance to attack.
+    The adversary can broadcast its personal mac address as the gateway, since all requests need to pass the gateway to WAN. Therefore if your router mac address be replaced to .24,
+    all your requests will pass through .24 -> gateway -> WAN. If these requests are not encrypted, it gives adversary a opportunity to steal the data from your traffic.
+    
+     
+
+- Against ARP Cache Poisoning
+
+## Reference
+1. https://www.fortinet.com/tw/resources/cyberglossary/what-is-arp
+2. https://datatracker.ietf.org/doc/html/rfc826
+3. 
 
 ## Install requirements
 `pip install -r requirements.txt`
@@ -58,3 +94,4 @@ mitmproxy: .62
 
 ## MITMPROXY
 - HTTPS 那邊
+
